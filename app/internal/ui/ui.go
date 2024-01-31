@@ -31,32 +31,6 @@ type Manager struct {
 func newAppManager(window *app.Window) *Manager {
 	m := Manager{}
 	m.window = window
-	//accountsIcon, _ := widget.NewIcon(icons.SocialGroup)
-	//walletIcon, _ := widget.NewIcon(icons.ActionAccountBalanceWallet)
-	//aboutIcon, _ := widget.NewIcon(icons.ActionInfo)
-	//items := []*view.SidebarItem{
-	//	{
-	//		Manager:  &m,
-	//		AppTheme: theme.GlobalTheme,
-	//		Title:    "Wallet",
-	//		Icon:     walletIcon,
-	//		URL:      shared.WalletPageURL,
-	//	},
-	//	{
-	//		Manager:  &m,
-	//		AppTheme: theme.GlobalTheme,
-	//		Title:    "Chains",
-	//		Icon:     accountsIcon,
-	//		URL:      shared.ChainsPageURL,
-	//	},
-	//	{
-	//		Manager:  &m,
-	//		AppTheme: theme.GlobalTheme,
-	//		Title:    "About",
-	//		Icon:     aboutIcon,
-	//		URL:      shared.AboutPageURL,
-	//	},
-	//}
 	m.pagesStack = shared.PagesStack{
 		Page: shared.Page{
 			View: wallet.New(&m),

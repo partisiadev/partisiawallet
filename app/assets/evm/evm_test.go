@@ -4,8 +4,9 @@ import (
 	"testing"
 )
 
-func BenchmarkLoadChainsFromAssets(b *testing.B) {
+func BenchmarkLoadChains(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		LoadChains()
+		ch := <-LoadChains()
+		b.Log(ch.Done)
 	}
 }
