@@ -1,7 +1,10 @@
 package main
 
 import (
-	"github.com/partisiadev/partisiawallet/app"
+	"gioui.org/app"
+	"github.com/partisiadev/partisiawallet/log"
+	"github.com/partisiadev/partisiawallet/ui"
+	"os"
 	"os/exec"
 	"strings"
 	"time"
@@ -22,5 +25,11 @@ func FixTimezone() {
 
 func main() {
 	FixTimezone()
-	app.Run()
+	go func() {
+		if err := ui.Loop(); err != nil {
+			log.Logger().Fatal(err)
+		}
+		os.Exit(0)
+	}()
+	app.Main()
 }

@@ -1,0 +1,23 @@
+package about
+
+import (
+	"gioui.org/layout"
+	"gioui.org/widget/material"
+	"github.com/partisiadev/partisiawallet/ui/shared"
+	"github.com/partisiadev/partisiawallet/ui/theme"
+)
+
+type About struct {
+	shared.Manager
+	layout.List
+}
+
+func New(m shared.Manager) shared.View {
+	return &About{Manager: m}
+}
+
+func (p *About) Layout(gtx layout.Context) layout.Dimensions {
+	return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+		return material.Body1(theme.GlobalTheme.Theme(), "About Page").Layout(gtx)
+	})
+}
