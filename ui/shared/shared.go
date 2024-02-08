@@ -5,7 +5,6 @@ import (
 	"gioui.org/layout"
 	"gioui.org/unit"
 	"gioui.org/x/component"
-	"github.com/partisiadev/partisiawallet/router"
 	"time"
 )
 
@@ -46,5 +45,11 @@ type Manager interface {
 	Window() *app.Window
 	WindowDimensions() WindowDimensions
 	Modal() Modal
-	Router() *router.Router
 }
+
+const (
+	WalletPagePattern = "/wallet"
+	HomePagePattern   = "/wallet"
+	ChainsPagePattern = "/chains"
+	AboutPagePattern  = "/about"
+)

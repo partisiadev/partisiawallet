@@ -9,10 +9,8 @@ import (
 	"gioui.org/op"
 	"gioui.org/widget"
 	"gioui.org/widget/material"
-	"github.com/partisiadev/partisiawallet/ui/theme"
-	"strconv"
-
 	"github.com/partisiadev/partisiawallet/log"
+	"github.com/partisiadev/partisiawallet/ui/theme"
 	"time"
 )
 
@@ -40,10 +38,10 @@ func Loop() error {
 	w.Option(app.Decorated(false))
 	// backClickTag is meant for tracking db's backClick action, specially on mobile
 	var backClickTag struct{}
-	timingWindow := time.Second
-	var timings []FrameTiming
-	frameCounter := 0
-	timingStart := time.Time{}
+	//timingWindow := time.Second
+	//var timings []FrameTiming
+	//frameCounter := 0
+	//timingStart := time.Time{}
 	for {
 		switch e := w.NextEvent().(type) {
 		case system.DestroyEvent:
@@ -56,34 +54,34 @@ func Loop() error {
 			uiManager.insets = e.Insets
 			e.Insets = system.Insets{}
 			gtx := layout.NewContext(&ops, e)
-			op.InvalidateOp{}.Add(gtx.Ops)
-			if timingStart == (time.Time{}) {
-				timingStart = gtx.Now
-			}
-			if interval := gtx.Now.Sub(timingStart); interval >= timingWindow {
-				timings = append(timings, FrameTiming{
-					Start:           timingStart,
-					End:             gtx.Now,
-					FrameCount:      frameCounter,
-					FramesPerSecond: float64(frameCounter) / interval.Seconds(),
-				})
-				frameCounter = 0
-				timingStart = gtx.Now
-			}
+			//op.InvalidateOp{}.Add(gtx.Ops)
+			//if timingStart == (time.Time{}) {
+			//	timingStart = gtx.Now
+			//}
+			//if interval := gtx.Now.Sub(timingStart); interval >= timingWindow {
+			//	timings = append(timings, FrameTiming{
+			//		Start:           timingStart,
+			//		End:             gtx.Now,
+			//		FrameCount:      frameCounter,
+			//		FramesPerSecond: float64(frameCounter) / interval.Seconds(),
+			//	})
+			//	frameCounter = 0
+			//	timingStart = gtx.Now
+			//}
 			for _, event := range gtx.Events(&backClickTag) {
 				switch e := event.(type) {
 				case key.Event:
 					switch e.Name {
-					case key.NameBack:
-						uiManager.Router().PopUp()
+					//case key.NameBack:
+					//	uiManager.Router().PopUp(false)
 					}
 				}
 			}
 			// Listen to back command only when uiManager.pagesStack is greater than 1,
 			//  so we can pop up page else we want the android's default behavior
-			if uiManager.Router().StackSize() > 1 {
-				key.InputOp{Tag: &backClickTag, Keys: key.NameBack}.Add(gtx.Ops)
-			}
+			//if uiManager.Router().StackSize() > 1 {
+			//	key.InputOp{Tag: &backClickTag, Keys: key.NameBack}.Add(gtx.Ops)
+			//}
 			uiManager.metric = gtx.Metric
 			uiManager.constraints = gtx.Constraints
 			uiManager.Layout(gtx)
@@ -94,12 +92,12 @@ func Loop() error {
 				uiManager.decoratedSize = layout.Dimensions{}
 			}
 			e.Frame(gtx.Ops)
-			for _, timing := range timings {
-				_ = timing
-				txt2 := strconv.FormatFloat(timing.FramesPerSecond, 'f', 2, 64)
-				log.Logger().Println(txt2)
-			}
-			frameCounter++
+			//for _, timing := range timings {
+			//	_ = timing
+			//	txt2 := strconv.FormatFloat(timing.FramesPerSecond, 'f', 2, 64)
+			//	log.Logger().Println(txt2)
+			//}
+			//frameCounter++
 		case system.StageEvent:
 			if e.Stage == system.StagePaused {
 				log.Logger().Infoln("window is running in background")

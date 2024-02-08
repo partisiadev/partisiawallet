@@ -31,7 +31,7 @@ func (p *Wallet) Layout(gtx Gtx) Dim {
 	return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 		return material.Body1(
 			theme.GlobalTheme.Theme(),
-			fmt.Sprintf("%T", db.Instance().State().DatabaseExists()),
+			fmt.Sprintf("Wallet exists %t", db.Instance().State().DatabaseExists()),
 		).Layout(gtx)
 	})
 }

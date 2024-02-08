@@ -1,4 +1,4 @@
-package router
+package model
 
 type Document struct {
 	ID    string

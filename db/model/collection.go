@@ -1,4 +1,4 @@
-package router
+package model
 
 type Collection struct {
 	ID     string

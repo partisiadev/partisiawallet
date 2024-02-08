@@ -1,76 +1,88 @@
 package utils
 
-import "sync"
+// StackItem is intended for switching behavior, unlike push and pop up where
+// stack size changes. children field is read only for this very same reason.
+type StackItem[T any] struct {
+	activeIndex         int
+	children            []T
+	indexChangeListener func()
+}
+
+func NewStackItem[T any](activeIndex int, children []T, indexChangeListener func()) *StackItem[T] {
+	return &StackItem[T]{
+		activeIndex: activeIndex,
+		children:    children,
+	}
+}
+
+func (s *StackItem[T]) SetActiveIndex(newIndex int) {
+	prevIndex := s.GetActiveIndex()
+	if newIndex < len(s.children) && newIndex != prevIndex {
+		s.activeIndex = newIndex
+		if s.indexChangeListener != nil {
+			s.indexChangeListener()
+		}
+	}
+}
+func (s *StackItem[T]) GetActiveIndex() int {
+	return s.activeIndex
+}
+
+func (s *StackItem[T]) GetActiveItem() T {
+	var t T
+	i := s.GetActiveIndex()
+	childSize := len(s.children)
+	if i >= 0 && i < childSize {
+		return s.children[i]
+	}
+	return t
+}
+
+func (s *StackItem[T]) GetChildren() []T {
+	return s.children
+}
 
 type Stack[T any] struct {
-	history      []T
-	historyMutex sync.RWMutex
+	history []*StackItem[T]
 }
 
 func NewStack[T any]() *Stack[T] {
 	return &Stack[T]{
-		history: make([]T, 0),
+		history: make([]*StackItem[T], 0),
 	}
 }
 
-//func (s *Stack[T]) SetHistory(history []T) {
-//	s.historyMutex.Lock()
-//	defer s.historyMutex.Unlock()
-//	s.history = append(s.history[:0], history...)
-//}
-
-//func (s *Stack[T]) GetHistory() []T {
-//	s.historyMutex.RLock()
-//	his := make([]T, len(s.history))
-//	copy(his, s.history)
-//	s.historyMutex.RUnlock()
-//	return his
-//}
-
-func (s *Stack[T]) CurrentItem() T {
-	s.historyMutex.RLock()
-	defer s.historyMutex.RUnlock()
+func (s *Stack[T]) CurrentItem() *StackItem[T] {
 	if len(s.history) > 0 {
 		return s.history[len(s.history)-1]
 	}
-	var t T
-	return t
+	return nil
 }
-func (s *Stack[T]) Push(t T) {
-	s.historyMutex.Lock()
-	defer s.historyMutex.Unlock()
+func (s *Stack[T]) Push(t *StackItem[T]) {
 	s.history = append(s.history, t)
 }
-func (s *Stack[T]) PopUp() (didPopUP bool) {
-	s.historyMutex.Lock()
-	defer s.historyMutex.Unlock()
+func (s *Stack[T]) PopUp(force bool) {
 	if len(s.history) > 0 {
-		s.history = s.history[0 : len(s.history)-1]
-		didPopUP = true
+		if len(s.history) == 1 {
+			if force {
+				s.history = s.history[0 : len(s.history)-1]
+			}
+		} else {
+			s.history = s.history[0 : len(s.history)-1]
+		}
 	}
-	return didPopUP
 }
 
-// Replace replaces the last item, if the stack is empty, it will add t
-func (s *Stack[T]) Replace(t T) {
-	s.historyMutex.Lock()
-	defer s.historyMutex.Unlock()
-	if len(s.history) == 0 {
-		s.history = make([]T, 1)
-	}
-	s.history[len(s.history)-1] = t
+func (s *Stack[T]) CanPopUp() bool {
+	return s.Size() > 0
 }
 
 func (s *Stack[T]) Size() int {
-	s.historyMutex.RLock()
-	defer s.historyMutex.RUnlock()
 	return len(s.history)
 }
 
-func (s *Stack[T]) Clone() []T {
-	s.historyMutex.Lock()
-	defer s.historyMutex.Unlock()
-	history := make([]T, len(s.history))
+func (s *Stack[T]) Clone() []*StackItem[T] {
+	history := make([]*StackItem[T], len(s.history))
 	copy(history, s.history)
 	return history
 }
