@@ -1,49 +1,187 @@
 package db
 
 import (
+	"bytes"
 	"errors"
-	"github.com/partisiadev/partisiawallet/db/internal"
+	"fmt"
+	"github.com/dgraph-io/badger/v4"
 )
 
 var (
 	ErrInvalidCollectionPath = errors.New("collection path is not valid")
 	ErrInvalidDocumentPath   = errors.New("document path is not valid")
-	ErrInvalidPath           = errors.New("invalid path")
 )
 
-type State interface {
-	OpenDB(passwd string) error
-	DatabaseExists() bool
-	VerifyPassword(passwd string) error
-	IsDBOpen() bool
+type database struct {
+	state *Accessor
 }
 
-type DB struct {
-	state *internal.State
-}
+var databaseInstance = &database{}
 
-var dbInstance = &DB{}
-var _ State = dbInstance.state
-
-func Instance() *DB {
-	if dbInstance.state == nil {
-		dbInstance.state = internal.DBState()
+func dBInstance() *database {
+	if databaseInstance.state == nil {
+		databaseInstance.state = accessorInstance()
 	}
-	return dbInstance
+	return databaseInstance
 }
 
-func (d *DB) State() State {
-	return d.state
+func (d *database) accounts() ([]Account, error) {
+	allKeys, err := d.loadKeysForAccounts()
+	if err != nil {
+		return nil, err
+	}
+	accs, err := d.loadAccountsFromKeys(allKeys)
+	return accs, err
 }
 
-//
-//// saveCollection
-//// if the PathType is PathTypeDocument then the /Collection.ID will be appended
-//// to the path
-//// if the PathType is PathTypeCollection then the last segment will be compared
-//// with the Collection.ID, on mismatch an error of ErrInvalidPath is returned
-//func (d *DB) saveCollection(collPath router.Path, collection router.Collection) error {
-//	dBase, err := d.state.GetDB()
+func (d *database) loadKeysForAccounts() ([]string, error) {
+	db, err := d.state.getOpenedDB()
+	if err != nil {
+		return nil, err
+	}
+	allKeys := make([]string, 0)
+	err = db.View(func(txn *badger.Txn) error {
+		opts := badger.DefaultIteratorOptions
+		it := txn.NewIterator(opts)
+		defer it.Close()
+		for it.Seek([]byte(PathAccounts)); it.ValidForPrefix([]byte(PathAccounts)); it.Next() {
+			item := it.Item()
+			kbs := item.KeyCopy(nil)
+			k := string(kbs)
+			if bytes.HasSuffix(kbs, []byte("/")) {
+				break
+			}
+			allKeys = append(allKeys, k)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return allKeys, err
+}
+
+func (d *database) loadAccountsFromKeys(allKeys []string) ([]Account, error) {
+	db, err := d.state.getOpenedDB()
+	if err != nil {
+		return nil, err
+	}
+	accs := make([]Account, 0)
+	for _, k := range allKeys {
+		err = db.View(func(txn *badger.Txn) error {
+			item, err := txn.Get([]byte(k))
+			if err != nil {
+				return err
+			}
+			acc := account{}
+			err = item.Value(func(val []byte) (err error) {
+				err = DecodeToStruct(&acc, val)
+				return err
+			})
+			if err != nil {
+				return err
+			}
+			accs = append(accs, Account{account: acc})
+			return nil
+		})
+		if err != nil {
+			continue
+		}
+	}
+	return accs, err
+}
+
+func (d *database) deleteActiveAccount() error {
+	db, err := d.state.getOpenedDB()
+	if err != nil {
+		return err
+	}
+	err = db.Update(func(txn *badger.Txn) error {
+		err = txn.Delete([]byte(PathActiveAccount))
+		return err
+	})
+	return err
+}
+
+func (d *database) activeAccount() (*Account, error) {
+	db, err := d.state.getOpenedDB()
+	if err != nil {
+		return nil, err
+	}
+	var acc Account
+	err = db.View(func(txn *badger.Txn) error {
+		var item *badger.Item
+		item, err = txn.Get([]byte(PathActiveAccount))
+		if err != nil {
+			return err
+		}
+		err = item.Value(func(val []byte) (err error) {
+			err = DecodeToStruct(&acc.account, val)
+			if err != nil {
+				return err
+			}
+			return nil
+		})
+		return err
+	})
+	return &acc, err
+}
+
+func (d *database) setActiveAccount(acc Account) error {
+	db, err := d.state.getOpenedDB()
+	if err != nil {
+		return err
+	}
+	if acc.PathID() == "" {
+		return ErrInvalidPathID
+	}
+	if acc.Type() == AccountTypeInvalid {
+		return ErrInvalidAccount
+	}
+	val := EncodeToBytes(&acc.account)
+	txn := db.NewTransaction(true)
+	defer txn.Discard()
+	err = txn.Set([]byte(PathActiveAccount), val)
+	if err != nil {
+		return err
+	}
+	err = txn.Commit()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (d *database) saveAccount(pvtAcc *Account) error {
+	db, err := d.state.getOpenedDB()
+	if err != nil {
+		return err
+	}
+	if pvtAcc.Type() == AccountTypeInvalid {
+		return ErrInvalidAccount
+	}
+	key := fmt.Sprintf("%s/%s", PathAccounts, pvtAcc.PathID())
+	val := EncodeToBytes(&pvtAcc.account)
+	txn := db.NewTransaction(true)
+	defer txn.Discard()
+	err = txn.Set([]byte(key), val)
+	if err != nil {
+		return err
+	}
+	err = txn.Commit()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// saveCollection
+// if the PathType is PathTypeDocument then the /Collection.ID will be appended
+// to the path
+// if the PathType is PathTypeCollection then the last segment will be compared
+// with the Collection.ID, on mismatch an error of ErrInvalidPath is returned
+//func (d *database) saveCollection(collPath string, collection Collection) error {
+//	dBase, err := d.state.getDB()
 //	if err != nil {
 //		return err
 //	}
@@ -76,14 +214,14 @@ func (d *DB) State() State {
 //	err = txn.Commit()
 //	return err
 //}
-//
+
 //// saveDocument
 //// if the PathType is PathTypeCollection then the /Document.ID will be appended
 //// to the path
 //// if the PathType is PathTypeDocument then the last segment will be compared
 //// with the Document.ID, on mismatch an error of ErrInvalidPath is returned
 //func (d *DB) saveDocument(docPath router.Path, document router.Document) error {
-//	dBase, err := d.state.GetDB()
+//	dBase, err := d.state.getDB()
 //	if err != nil {
 //		return err
 //	}

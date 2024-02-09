@@ -53,3 +53,6 @@ func (p *NavStack) PushView(url string, view View) {
 		View: view,
 	})
 }
+func (p *NavStack) SetChildren(children []*NavStackChild) {
+	p.children = append(p.children, children...)
+}

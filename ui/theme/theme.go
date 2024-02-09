@@ -22,7 +22,17 @@ func (t *appTheme) Theme() *material.Theme {
 }
 
 func (t *appTheme) Clone() AppTheme {
-	return newTheme()
+	var appTh appTheme
+	if t == nil {
+		appTh.th = material.NewTheme()
+		appTh.th.Shaper = text.NewShaper(text.WithCollection(fonts.Collection))
+		appTh.th.ContrastBg = color.NRGBA{R: 10, B: 40, A: 255}
+		return &appTh
+	}
+	appTh = *t
+	th := *t.Theme()
+	appTh.th = &th
+	return &appTh
 }
 
 var globalTheme *appTheme

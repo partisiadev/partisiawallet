@@ -10,7 +10,7 @@ var (
 	ErrPatternAlreadyRegistered = errors.New("pattern already registered")
 )
 
-type PageGenerator func(concretePath string) View
+type PageGenerator func(concretePath string) func(stack *NavStack) View
 
 type Nav struct {
 	history    []*NavStack
@@ -55,7 +55,7 @@ func (n *Nav) NavigateToPath(p string) {
 	}
 	n.generators.Range(func(key string, value PageGenerator) bool {
 		if ok := regexp.MustCompile(key).MatchString(p); ok {
-			vw := value(p)
+			vwCall := value(p)
 			page := NavStack{
 				url:         p,
 				pattern:     key,
@@ -63,7 +63,7 @@ func (n *Nav) NavigateToPath(p string) {
 				activeIndex: 0,
 				listener:    0,
 			}
-			page.PushView(p, vw)
+			vwCall(&page)
 			n.pushPage(&page)
 			return false
 		}

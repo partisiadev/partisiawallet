@@ -1,7 +1,6 @@
-package internal
+package db
 
 import (
-	"errors"
 	"fmt"
 	"gioui.org/app"
 	"github.com/dgraph-io/badger/v4"
@@ -16,59 +15,59 @@ import (
 const MaxNumOfPasswdChars = 32
 const passwdPadCharacter = "0"
 
-var (
-	ErrDBIsClosed          = errors.New("database is closed")
-	ErrPasswordMismatch    = errors.New("password mismatch")
-	ErrPasswordInvalid     = errors.New("password invalid")
-	ErrPasswordNotSet      = errors.New("password not set")
-	ErrPasswdCannotBeEmpty = errors.New("password cannot be empty")
-)
-
-type State struct {
+type Accessor struct {
 	password      string
 	passwordMutex sync.RWMutex
 	dataBase      *badger.DB
 	dataBaseMutex sync.RWMutex
 }
 
-var dbState = &State{}
+var dbState = &Accessor{}
 
-func DBState() *State {
+func accessorInstance() *Accessor {
 	return dbState
 }
 
-func (s *State) setPassword(passwd string) {
+func (s *Accessor) setPassword(passwd string) {
 	s.passwordMutex.Lock()
 	defer s.passwordMutex.Unlock()
 	s.password = passwd
 }
 
-func (s *State) getPassword() string {
+func (s *Accessor) getPassword() string {
 	s.passwordMutex.RLock()
 	defer s.passwordMutex.RUnlock()
 	return s.password
 }
 
-func (s *State) setDB(db *badger.DB) {
+func (s *Accessor) setDB(db *badger.DB) {
 	s.dataBaseMutex.Lock()
 	defer s.dataBaseMutex.Unlock()
 	s.dataBase = db
 }
 
-func (s *State) GetDB() (*badger.DB, error) {
+func (s *Accessor) getDB() *badger.DB {
 	s.dataBaseMutex.RLock()
 	defer s.dataBaseMutex.RUnlock()
-	if s.dataBase == nil || s.dataBase.IsClosed() {
-		return nil, ErrDBIsClosed
-	}
-	return s.dataBase, nil
+	return s.dataBase
 }
 
-func (s *State) OpenDB(passwd string) error {
-	origPasswd := passwd
-	_, err := s.GetDB()
-	if err != nil {
-		return err
+func (s *Accessor) getOpenedDB() (*badger.DB, error) {
+	db := s.getDB()
+	if db == nil {
+		return nil, ErrDBIsClosed
+	}
+	if db.IsClosed() {
+		s.setDB(nil)
+		return nil, ErrDBIsClosed
+	}
+	return db, nil
+}
+
+func (s *Accessor) OpenDB(passwd string) error {
+	db := s.getDB()
+	if db != nil || s.IsDBOpen() {
+		return ErrDBIsAlreadyOpen
 	}
 	if len(passwd) == 0 {
 		return ErrPasswdCannotBeEmpty
@@ -85,6 +84,7 @@ func (s *State) OpenDB(passwd string) error {
 			rightPad += passwdPadCharacter
 		}
 	}
+	origPasswd := passwd
 	passwd = leftPad + passwd + rightPad
 	dbPath := s.DatabasePath()
 	options := badger.DefaultOptions(dbPath)
@@ -99,7 +99,7 @@ func (s *State) OpenDB(passwd string) error {
 	return nil
 }
 
-func (s *State) DatabasePath() string {
+func (s *Accessor) DatabasePath() string {
 	dirPath, err := app.DataDir()
 	if err != nil {
 		log.Logger().Fatal(err)
@@ -108,16 +108,25 @@ func (s *State) DatabasePath() string {
 	return dbPath
 }
 
-func (s *State) DatabaseExists() bool {
+func (s *Accessor) DatabaseExists() bool {
 	dbPath := s.DatabasePath()
 	_, err := os.Stat(dbPath)
+	if err == nil {
+		res, err := os.ReadDir(dbPath)
+		// If database directory is empty, then
+		if len(res) == 0 && err == nil {
+			err = os.RemoveAll(dbPath)
+			return false
+		}
+		return true
+	}
 	return err == nil
 }
 
 // VerifyPassword
 // returns nil if password is correct else may
 // return ErrPasswordMismatch or ErrPasswordInvalid or ErrPasswordNotSet
-func (s *State) VerifyPassword(passwd string) error {
+func (s *Accessor) VerifyPassword(passwd string) error {
 	if strings.TrimSpace(passwd) == "" {
 		return ErrPasswordInvalid
 	}
@@ -130,16 +139,19 @@ func (s *State) VerifyPassword(passwd string) error {
 	return nil
 }
 
-func (s *State) closeDB() error {
-	db, err := s.GetDB()
-	if err == nil {
+func (s *Accessor) closeDB() error {
+	db := s.getDB()
+	if db == nil {
 		_ = db.Close()
 	}
 	s.setDB(nil)
 	return nil
 }
 
-func (s *State) IsDBOpen() bool {
-	_, err := s.GetDB()
-	return err == nil
+func (s *Accessor) IsDBOpen() bool {
+	db := s.getDB()
+	if db == nil {
+		return false
+	}
+	return !db.IsClosed()
 }

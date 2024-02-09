@@ -28,7 +28,7 @@ package rpc
 //	return conn, err
 //}
 
-//func (c *RpcClient) ShowBalance(acc db.Account) (string, error) {
+//func (c *RpcClient) ShowBalance(acc db.activeAccount) (string, error) {
 //	if c.GetClient() == nil {
 //		return "", ErrNotConnected
 //	}
