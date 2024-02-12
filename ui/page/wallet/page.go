@@ -6,33 +6,25 @@ import (
 	"gioui.org/op"
 	"gioui.org/widget"
 	"gioui.org/widget/material"
-	"gioui.org/x/component"
 	"github.com/partisiadev/partisiawallet/db"
-	"github.com/partisiadev/partisiawallet/ui/shared"
+	"github.com/partisiadev/partisiawallet/ui/fwk"
 	"github.com/partisiadev/partisiawallet/ui/theme"
 	"github.com/partisiadev/partisiawallet/ui/view"
 )
 
-type (
-	Gtx         = layout.Context
-	Dim         = layout.Dimensions
-	Animation   = component.VisibilityAnimation
-	View        = shared.View
-	ModalOption = shared.ModalOption
-)
-
 type Wallet struct {
-	shared.Manager
+	fwk.Manager
 	layout.List
 	buttons []widget.Clickable
 	*view.PasswordForm
+	widget.Clickable
 }
 
-func New(m shared.Manager) shared.View {
+func New(m fwk.Manager) fwk.View {
 	return &Wallet{Manager: m, List: layout.List{Axis: layout.Vertical}}
 }
 
-func (p *Wallet) Layout(gtx Gtx) Dim {
+func (p *Wallet) Layout(gtx layout.Context) layout.Dimensions {
 	if !db.Instance().DBAccessor().DatabaseExists() ||
 		!db.Instance().DBAccessor().IsDBOpen() {
 		return p.NoWalletLayout(gtx)
@@ -46,10 +38,22 @@ func (p *Wallet) Layout(gtx Gtx) Dim {
 		).Layout(gtx)
 	}
 	if len(accounts) == 0 {
-		material.Body1(
-			theme.GlobalTheme.Theme(),
-			"There are no accounts to view",
-		).Layout(gtx)
+		if p.Clickable.Clicked(gtx) {
+			//vw := newacc.CreateAccountView{
+			//	Manager: p.Manager,
+			//}
+			//p.Navigator().Push(material.Body1(
+			//	theme.GlobalTheme.Theme(),
+			//	fmt.Sprintf("%s", "No accounts haan?"),
+			//), gtx)
+			return material.Body1(theme.GlobalTheme.Theme(), "Yahhoooo").Layout(gtx)
+		}
+		return p.Clickable.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+			return material.Body1(
+				theme.GlobalTheme.Theme(),
+				"Did I navigated?",
+			).Layout(gtx)
+		})
 	}
 
 	return layout.Flex{Axis: layout.Vertical}.Layout(gtx,
@@ -87,7 +91,7 @@ func (p *Wallet) Layout(gtx Gtx) Dim {
 	)
 }
 
-func (p *Wallet) NoWalletLayout(gtx Gtx) layout.Dimensions {
+func (p *Wallet) NoWalletLayout(gtx layout.Context) layout.Dimensions {
 	if p.PasswordForm == nil {
 		p.PasswordForm = view.NewPasswordForm(nil)
 	}

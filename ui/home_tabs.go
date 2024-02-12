@@ -1,13 +1,15 @@
 package ui
 
 import (
+	"fmt"
 	"gioui.org/layout"
 	"gioui.org/widget"
 	"gioui.org/widget/material"
+	"github.com/partisiadev/partisiawallet/log"
+	"github.com/partisiadev/partisiawallet/ui/fwk"
 	"github.com/partisiadev/partisiawallet/ui/page/about"
 	"github.com/partisiadev/partisiawallet/ui/page/chains"
 	"github.com/partisiadev/partisiawallet/ui/page/wallet"
-	"github.com/partisiadev/partisiawallet/ui/shared"
 	"github.com/partisiadev/partisiawallet/ui/theme"
 	"github.com/partisiadev/partisiawallet/ui/view"
 	"golang.org/x/exp/shiny/materialdesign/icons"
@@ -15,17 +17,15 @@ import (
 
 type homeTabsLayout struct {
 	view.Slider
-	shared.Manager
-	tabItems [3]*tabItem
-	*shared.NavStack
+	fwk.Manager
+	tabItems    [3]*tabItem
 	activeIndex int
 }
 
 type tabItem struct {
-	m   *manager
 	URL string
 	widget.Clickable
-	shared.View
+	fwk.View
 	title  string
 	parent *homeTabsLayout
 	icon   *widget.Icon
@@ -40,6 +40,7 @@ func (t *tabItem) Layout(gtx layout.Context) layout.Dimensions {
 			t.parent.Slider.PushLeft()
 		}
 		t.parent.activeIndex = t.index
+		t.parent.Navigator().NavigateTo(t.URL)
 	}
 
 	btnStyle := material.ButtonLayoutStyle{Button: &t.Clickable}
@@ -68,67 +69,29 @@ func (t *tabItem) Layout(gtx layout.Context) layout.Dimensions {
 	})
 }
 
-func homeTabsManager(m *manager) *homeTabsLayout {
+func newHomeTabsManager(m *manager) *homeTabsLayout {
 	walletIcon, _ := widget.NewIcon(icons.ActionAccountBalanceWallet)
 	chainsIcon, _ := widget.NewIcon(icons.ContentLink)
 	aboutIcon, _ := widget.NewIcon(icons.ActionInfo)
 	tabItems := [3]*tabItem{
-		{URL: shared.WalletPagePattern, m: m, title: "Wallet", View: wallet.New(m), icon: walletIcon, index: 0},
-		{URL: shared.ChainsPagePattern, m: m, title: "Chains", View: chains.New(m), icon: chainsIcon, index: 1},
-		{URL: shared.AboutPagePattern, m: m, title: "About", View: about.New(m), icon: aboutIcon, index: 2},
+		{URL: "/" + fwk.HomeTabsPageName + "/" + fwk.WalletPageName, title: "Wallet", View: wallet.New(m), icon: walletIcon, index: 0},
+		{URL: "/" + fwk.HomeTabsPageName + "/" + fwk.ChainsPageName, title: "Chains", View: chains.New(m), icon: chainsIcon, index: 1},
+		{URL: "/" + fwk.HomeTabsPageName + "/" + fwk.AboutPageName, title: "About", View: about.New(m), icon: aboutIcon, index: 2},
 	}
 	hmTabs := &homeTabsLayout{Manager: m, tabItems: tabItems}
 	hmTabs.tabItems[0].parent = hmTabs
 	hmTabs.tabItems[1].parent = hmTabs
 	hmTabs.tabItems[2].parent = hmTabs
-	stackChildren := []*shared.NavStackChild{
-		{URL: shared.WalletPagePattern, View: hmTabs},
-		{URL: shared.ChainsPagePattern, View: hmTabs},
-		{URL: shared.AboutPagePattern, View: hmTabs},
-	}
-	m.Nav().Register(shared.WalletPagePattern,
-		func(concretePath string) func(stack *shared.NavStack) shared.View {
-			return func(stack *shared.NavStack) shared.View {
-				hmTabs.NavStack = stack
-				vw := wallet.New(m)
-				hmTabs.tabItems[0].View = vw
-				stackChildren[0].URL = concretePath
-				hmTabs.SetChildren(stackChildren)
-				hmTabs.SetActiveIndex(hmTabs.activeIndex)
-				return vw
-			}
-		})
-	m.Nav().Register(shared.ChainsPagePattern, func(concretePath string) func(stack *shared.NavStack) shared.View {
-		return func(stack *shared.NavStack) shared.View {
-			hmTabs.NavStack = stack
-			vw := chains.New(m)
-			hmTabs.tabItems[1].View = vw
-			stackChildren[1].URL = concretePath
-			hmTabs.SetChildren(stackChildren)
-			hmTabs.SetActiveIndex(hmTabs.activeIndex)
-			return vw
-		}
-	})
-	m.Nav().Register(shared.AboutPagePattern, func(concretePath string) func(stack *shared.NavStack) shared.View {
-		return func(stack *shared.NavStack) shared.View {
-			hmTabs.NavStack = stack
-			vw := about.New(m)
-			hmTabs.tabItems[2].View = vw
-			stackChildren[2].URL = concretePath
-			hmTabs.SetChildren(stackChildren)
-			hmTabs.SetActiveIndex(hmTabs.activeIndex)
-			return vw
-		}
-	})
-	m.Nav().NavigateToPath(shared.WalletPagePattern)
+	hmTabs.Navigator().Register(fmt.Sprintf(`^/%s`, fwk.HomeTabsPageName), hmTabs)
+	hmTabs.Navigator().NavigateTo(tabItems[0].URL)
 	return hmTabs
 }
 
-func (p *homeTabsLayout) Layout(gtx layout.Context) layout.Dimensions {
+func (hm *homeTabsLayout) Layout(gtx layout.Context) layout.Dimensions {
 	return layout.Flex{Axis: layout.Vertical}.Layout(gtx,
 		layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
 			gtx.Constraints.Min = gtx.Constraints.Max
-			return p.Slider.Layout(gtx, p.tabItems[p.activeIndex].View.Layout)
+			return hm.Slider.Layout(gtx, hm.tabItems[hm.activeIndex].View.Layout)
 		}),
 		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 			gtx.Constraints.Min.X = gtx.Constraints.Max.X
@@ -137,15 +100,20 @@ func (p *homeTabsLayout) Layout(gtx layout.Context) layout.Dimensions {
 				gtx.Constraints.Min.X = gtx.Constraints.Max.X
 				return layout.Flex{Spacing: layout.SpaceEvenly, Alignment: layout.Middle}.Layout(gtx,
 					layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
-						return p.tabItems[0].Layout(gtx)
+						return hm.tabItems[0].Layout(gtx)
 					}),
 					layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
-						return p.tabItems[1].Layout(gtx)
+						return hm.tabItems[1].Layout(gtx)
 					}), layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
-						return p.tabItems[2].Layout(gtx)
+						return hm.tabItems[2].Layout(gtx)
 					}),
 				)
 			})
 		}),
 	)
+}
+
+func (hm *homeTabsLayout) Handle(concretePath string) fwk.View {
+	log.Logger().Println(concretePath)
+	return hm
 }

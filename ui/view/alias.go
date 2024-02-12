@@ -3,7 +3,7 @@ package view
 import (
 	"gioui.org/layout"
 	"gioui.org/x/component"
-	"github.com/partisiadev/partisiawallet/ui/shared"
+	"github.com/partisiadev/partisiawallet/ui/fwk"
 )
 
 var (
@@ -16,6 +16,6 @@ type (
 	Gtx       = layout.Context
 	Dim       = layout.Dimensions
 	Animation = component.VisibilityAnimation
-	View      = shared.View
+	View      = fwk.View
 	Flex      = layout.Flex
 )

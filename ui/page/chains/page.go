@@ -4,7 +4,7 @@ import (
 	"gioui.org/layout"
 	"gioui.org/widget/material"
 	"gioui.org/x/component"
-	"github.com/partisiadev/partisiawallet/ui/shared"
+	"github.com/partisiadev/partisiawallet/ui/fwk"
 	"github.com/partisiadev/partisiawallet/ui/theme"
 )
 
@@ -12,16 +12,16 @@ type (
 	Gtx         = layout.Context
 	Dim         = layout.Dimensions
 	Animation   = component.VisibilityAnimation
-	View        = shared.View
-	ModalOption = shared.ModalOption
+	View        = fwk.View
+	ModalOption = fwk.ModalOption
 )
 
 type Chains struct {
-	shared.Manager
+	fwk.Manager
 	layout.List
 }
 
-func New(m shared.Manager) shared.View {
+func New(m fwk.Manager) fwk.View {
 	return &Chains{Manager: m}
 }
 

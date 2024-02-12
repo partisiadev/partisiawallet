@@ -3,16 +3,16 @@ package about
 import (
 	"gioui.org/layout"
 	"gioui.org/widget/material"
-	"github.com/partisiadev/partisiawallet/ui/shared"
+	"github.com/partisiadev/partisiawallet/ui/fwk"
 	"github.com/partisiadev/partisiawallet/ui/theme"
 )
 
 type About struct {
-	shared.Manager
+	fwk.Manager
 	layout.List
 }
 
-func New(m shared.Manager) shared.View {
+func New(m fwk.Manager) fwk.View {
 	return &About{Manager: m}
 }
 

@@ -5,11 +5,10 @@ import (
 	"gioui.org/io/system"
 	"gioui.org/layout"
 	"gioui.org/unit"
-	"gioui.org/widget/material"
 	"gioui.org/x/component"
 	"gioui.org/x/notify"
 	"github.com/partisiadev/partisiawallet/log"
-	"github.com/partisiadev/partisiawallet/ui/shared"
+	"github.com/partisiadev/partisiawallet/ui/fwk"
 	"github.com/partisiadev/partisiawallet/ui/theme"
 	"github.com/partisiadev/partisiawallet/ui/view"
 	"image"
@@ -22,11 +21,10 @@ type manager struct {
 	notifier       notify.Notifier
 	insets         system.Insets
 	modalsStack    view.Modal
-	snackbar       shared.View
+	snackbar       fwk.View
 	decoratedSize  layout.Dimensions
 	isStageRunning bool
-	//router         *router.Router
-	nav shared.Nav
+	navigator      *fwk.Navigator
 }
 
 func newAppManager(window *app.Window) *manager {
@@ -39,7 +37,9 @@ func newAppManager(window *app.Window) *manager {
 		log.Logger().Errorln(err)
 	}
 	m.modalsStack = view.Modal{}
-	homeTabsManager(&m)
+	nav := fwk.NewNavigator()
+	m.setNavigator(nav)
+	newHomeTabsManager(&m)
 	////m.snackbar = layoutView.NewSnackBar(theme.GlobalTheme)
 	m.snackbar = &view.Modal{}
 	//log.Logger().Println(m.Router().StackSize())
@@ -62,13 +62,7 @@ func (m *manager) Layout(gtx layout.Context) layout.Dimensions {
 				}.Layout(gtx)
 			}), layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
 				gtx.Constraints.Min = gtx.Constraints.Max
-				if m.Nav().CurrentPage() != nil &&
-					m.Nav().CurrentPage().ActiveChild().Layout != nil {
-					return m.Nav().CurrentPage().ActiveChild().Layout(gtx)
-				}
-				return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-					return material.H1(theme.GlobalTheme.Theme(), "Path not found").Layout(gtx)
-				})
+				return m.Navigator().Layout(gtx)
 			}), layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 				return component.Rect{
 					Color: theme.GlobalTheme.Theme().ContrastBg,
@@ -90,30 +84,28 @@ func (m *manager) Layout(gtx layout.Context) layout.Dimensions {
 	return d
 }
 
-func (m *manager) Modal() shared.Modal {
+func (m *manager) Modal() fwk.Modal {
 	return &m.modalsStack
 }
 
-func (m *manager) Snackbar() shared.View {
+func (m *manager) Snackbar() fwk.View {
 	return m.snackbar
 }
 func (m *manager) Window() *app.Window {
 	return m.window
 }
 
-func (m *manager) WindowDimensions() shared.WindowDimensions {
-	return shared.WindowDimensions{
+func (m *manager) WindowDimensions() fwk.WindowDimensions {
+	return fwk.WindowDimensions{
 		WidthDp:  unit.Dp(float32(m.constraints.Max.X) / m.metric.PxPerDp),
 		WidthPx:  m.constraints.Max.X,
 		HeightDp: unit.Dp(float32(m.constraints.Max.Y) / m.metric.PxPerDp),
 		HeightPx: m.constraints.Max.Y,
 	}
 }
-
-func (m *manager) Nav() *shared.Nav {
-	return &m.nav
+func (m *manager) Navigator() *fwk.Navigator {
+	return m.navigator
 }
-
-//func (m *manager) Router() *router.Router {
-//	return m.router
-//}
+func (m *manager) setNavigator(stack *fwk.Navigator) {
+	m.navigator = stack
+}

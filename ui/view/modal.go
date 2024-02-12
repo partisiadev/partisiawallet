@@ -5,7 +5,7 @@ import (
 	"gioui.org/op/paint"
 	"gioui.org/widget"
 	"gioui.org/x/component"
-	"github.com/partisiadev/partisiawallet/ui/shared"
+	"github.com/partisiadev/partisiawallet/ui/fwk"
 	"image/color"
 	"time"
 )
@@ -13,11 +13,11 @@ import (
 type Modal struct {
 	btnBackdrop        widget.Clickable
 	btnContent         widget.Clickable
-	option             shared.ModalOption
+	option             fwk.ModalOption
 	dismissWithoutAnim bool
 }
 
-func (m *Modal) Show(option shared.ModalOption) {
+func (m *Modal) Show(option fwk.ModalOption) {
 	if option.Widget == nil {
 		return
 	}
@@ -34,7 +34,7 @@ func (m *Modal) Layout(gtx layout.Context) layout.Dimensions {
 			m.option.AfterDismiss()
 		}
 		m.dismissWithoutAnim = false
-		m.option = shared.ModalOption{}
+		m.option = fwk.ModalOption{}
 		return layout.Dimensions{}
 	}
 	if m.btnBackdrop.Clicked(gtx) && !m.btnContent.Clicked(gtx) {
