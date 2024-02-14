@@ -8,6 +8,7 @@ import (
 	"gioui.org/widget/material"
 	"github.com/partisiadev/partisiawallet/db"
 	"github.com/partisiadev/partisiawallet/ui/fwk"
+	"github.com/partisiadev/partisiawallet/ui/page/newacc"
 	"github.com/partisiadev/partisiawallet/ui/theme"
 	"github.com/partisiadev/partisiawallet/ui/view"
 )
@@ -17,7 +18,7 @@ type Wallet struct {
 	layout.List
 	buttons []widget.Clickable
 	*view.PasswordForm
-	widget.Clickable
+	newAccountView view.View
 }
 
 func New(m fwk.Manager) fwk.View {
@@ -32,31 +33,16 @@ func (p *Wallet) Layout(gtx layout.Context) layout.Dimensions {
 
 	accounts, err := db.Instance().Accounts()
 	if err != nil {
-		material.Body1(
-			theme.GlobalTheme.Theme(),
-			fmt.Sprintf("%s", err.Error()),
-		).Layout(gtx)
+		//material.Body1(
+		//	theme.GlobalTheme.Theme(),
+		//	fmt.Sprintf("%s", err.Error()),
+		//).Layout(gtx)
 	}
 	if len(accounts) == 0 {
-		if p.Clickable.Clicked(gtx) {
-			p.Nav().NavigateTo(`/homeTabs/createAccount`)
-			op.InvalidateOp{}.Add(gtx.Ops)
-			//vw := newacc.CreateAccountView{
-			//	Manager: p.Manager,
-			//}
-			//p.Navigator().Push(material.Body1(
-			//	theme.GlobalTheme.Theme(),
-			//	fmt.Sprintf("%s", "No accounts haan?"),
-			//), gtx)
-			//p.Navigator().ViewsStack.Push(newacc.New(p.Manager))
-			//return material.Body1(theme.GlobalTheme.Theme(), "Yahhoooo").Layout(gtx)
+		if p.newAccountView == nil {
+			p.newAccountView = newacc.New(p.Manager)
 		}
-		return p.Clickable.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-			return material.Body1(
-				theme.GlobalTheme.Theme(),
-				"Did I navigated?",
-			).Layout(gtx)
-		})
+		return p.newAccountView.Layout(gtx)
 	}
 
 	return layout.Flex{Axis: layout.Vertical}.Layout(gtx,

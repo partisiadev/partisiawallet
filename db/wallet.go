@@ -24,7 +24,15 @@ func (d *Wallet) DBAccessor() *Accessor {
 }
 
 func (d *Wallet) AutoCreateEcdsaAccount() error {
-	pvtAcc, err := autoCreateEcdsaAccount()
+	pvtAcc, err := autoCreateECDSAAccount()
+	if err != nil {
+		return err
+	}
+	err = d.database.saveAccount(pvtAcc)
+	return nil
+}
+func (d *Wallet) ImportECDSAAccount(pvtKeyStr string) error {
+	pvtAcc, err := importECDSAAccount(pvtKeyStr)
 	if err != nil {
 		return err
 	}

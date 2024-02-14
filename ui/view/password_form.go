@@ -14,7 +14,6 @@ import (
 	"golang.org/x/exp/shiny/materialdesign/icons"
 	"image/color"
 	"strings"
-	"sync"
 )
 
 const notes = `Note: The password cannot be changed later. Be sure to never forget it. You may keep any password of your choice. In case if the password is forgotten, then if you have custodial account(s), then you can safely uninstall and reinstall the app. If you have non custodial account(s), then you should have a backup of your account's PrivateKey And/Or mnemonics. If you do have a backup, then you can safely uninstall and reinstall the app, and then import the keys again. If you don't have a backup, then please do not uninstall the app, else you may loose your valuable account. Keep guessing the different passwords, that's fine, as soon as you recover the password, don't forget to keep a backup of your account.`
@@ -231,7 +230,6 @@ func (p *PasswordForm) drawPasswordTextFields(gtx Gtx) Dim {
 }
 
 type inputPasswdFieldState struct {
-	sync.Once
 	editor      widget.Editor
 	inputStr    string
 	btnClear    widget.Clickable

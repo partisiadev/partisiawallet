@@ -56,17 +56,17 @@ func (hm *AppLayout) Handle(path *url.URL) fwk.View {
 	case strings.HasPrefix(pth, `/homeTabs/wallet`):
 		hm.activeIndex = 0
 		hm.view = hm.tabItems[0].view
-		hm.tabItems[0].path = path.Path
+		hm.tabItems[0].path = pth
 		return hm
 	case strings.HasPrefix(pth, `/homeTabs/chains`):
 		hm.activeIndex = 1
 		hm.view = hm.tabItems[1].view
-		hm.tabItems[1].path = path.Path
+		hm.tabItems[1].path = pth
 		return hm
 	case strings.HasPrefix(pth, `/homeTabs/about`):
 		hm.activeIndex = 2
 		hm.view = hm.tabItems[2].view
-		hm.tabItems[2].path = path.Path
+		hm.tabItems[2].path = pth
 		return hm
 	case strings.HasPrefix(pth, `/homeTabs/createAccount`):
 		hm.view = newacc.New(hm)
