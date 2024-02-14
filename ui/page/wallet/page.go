@@ -39,6 +39,8 @@ func (p *Wallet) Layout(gtx layout.Context) layout.Dimensions {
 	}
 	if len(accounts) == 0 {
 		if p.Clickable.Clicked(gtx) {
+			p.Nav().NavigateTo(`/homeTabs/createAccount`)
+			op.InvalidateOp{}.Add(gtx.Ops)
 			//vw := newacc.CreateAccountView{
 			//	Manager: p.Manager,
 			//}
@@ -46,7 +48,8 @@ func (p *Wallet) Layout(gtx layout.Context) layout.Dimensions {
 			//	theme.GlobalTheme.Theme(),
 			//	fmt.Sprintf("%s", "No accounts haan?"),
 			//), gtx)
-			return material.Body1(theme.GlobalTheme.Theme(), "Yahhoooo").Layout(gtx)
+			//p.Navigator().ViewsStack.Push(newacc.New(p.Manager))
+			//return material.Body1(theme.GlobalTheme.Theme(), "Yahhoooo").Layout(gtx)
 		}
 		return p.Clickable.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 			return material.Body1(

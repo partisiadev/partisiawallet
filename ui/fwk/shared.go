@@ -8,16 +8,20 @@ import (
 	"time"
 )
 
-// Page ---> Has a unique Path name among the siblings
-// (ex like a folder/file which cannot be same inside the same parent folder)
-type Page interface {
-	PathName() string
-	View
+type Widget layout.Widget
+
+func (w Widget) Layout(gtx layout.Context) layout.Dimensions {
+	return w(gtx)
 }
 
 // View is anything that can be displayed on the screen
 type View interface {
 	Layout(gtx layout.Context) layout.Dimensions
+}
+
+type PathView interface {
+	Name() string
+	View
 }
 
 type SnackbarOption struct {
@@ -48,18 +52,10 @@ type WindowDimensions struct {
 	HeightPx int
 }
 
-const (
-	WalletPageName        = `wallet`
-	ChainsPageName        = `chains`
-	AboutPageName         = `about`
-	CreateAccountPageName = `createAccount`
-	HomeTabsPageName      = `homeTabs`
-)
-
 type Manager interface {
 	Snackbar() View
 	Window() *app.Window
 	WindowDimensions() WindowDimensions
 	Modal() Modal
-	Navigator() *Navigator
+	Nav() *Nav
 }

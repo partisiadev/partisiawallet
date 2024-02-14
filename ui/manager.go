@@ -24,7 +24,7 @@ type manager struct {
 	snackbar       fwk.View
 	decoratedSize  layout.Dimensions
 	isStageRunning bool
-	navigator      *fwk.Navigator
+	nav            *fwk.Nav
 }
 
 func newAppManager(window *app.Window) *manager {
@@ -37,9 +37,10 @@ func newAppManager(window *app.Window) *manager {
 		log.Logger().Errorln(err)
 	}
 	m.modalsStack = view.Modal{}
-	nav := fwk.NewNavigator()
-	m.setNavigator(nav)
-	newHomeTabsManager(&m)
+	m.nav = fwk.NewNav()
+	NewAppLayout(&m)
+	m.Nav().NavigateTo(`/homeTabs/wallet`)
+
 	////m.snackbar = layoutView.NewSnackBar(theme.GlobalTheme)
 	m.snackbar = &view.Modal{}
 	//log.Logger().Println(m.Router().StackSize())
@@ -62,7 +63,7 @@ func (m *manager) Layout(gtx layout.Context) layout.Dimensions {
 				}.Layout(gtx)
 			}), layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
 				gtx.Constraints.Min = gtx.Constraints.Max
-				return m.Navigator().Layout(gtx)
+				return m.Nav().Layout(gtx)
 			}), layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 				return component.Rect{
 					Color: theme.GlobalTheme.Theme().ContrastBg,
@@ -103,9 +104,10 @@ func (m *manager) WindowDimensions() fwk.WindowDimensions {
 		HeightPx: m.constraints.Max.Y,
 	}
 }
-func (m *manager) Navigator() *fwk.Navigator {
-	return m.navigator
+
+func (m *manager) Nav() *fwk.Nav {
+	return m.nav
 }
-func (m *manager) setNavigator(stack *fwk.Navigator) {
-	m.navigator = stack
+func (m *manager) setNav(nav *fwk.Nav) {
+	m.nav = nav
 }

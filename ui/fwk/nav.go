@@ -3,107 +3,79 @@ package fwk
 import (
 	"gioui.org/layout"
 	"gioui.org/widget/material"
+	"net/url"
 	"regexp"
-	"strings"
 )
 
-// RouteHandler if view is nil then the path is not changed
-// If path is relative and handler returns nil View, then
-// the handler may be called again with absolute path
-type RouteHandler interface {
-	Handle(concretePath string) View
+type Handle func(path *url.URL) View
+
+func (ch Handle) Handle(path *url.URL) View {
+	return ch(path)
 }
 
-type PathView struct {
-	view         View
-	ConcretePath string
+type Router interface {
+	Handle(path *url.URL) View
 }
 
-type Navigator struct {
-	list               layout.List
-	activeView         PathView
-	activePattern      string
-	registeredPatterns map[string]RouteHandler
+type route struct {
+	*url.URL
+	path          string
+	activePattern string
+	View
 }
 
-func (n *Navigator) ActiveView() PathView {
-	return n.activeView
+type Nav struct {
+	route    route
+	handlers map[string]Router
 }
 
-func (n *Navigator) setActiveView(activeView PathView) {
-	n.activeView = activeView
+func (n *Nav) getRoute() route {
+	return n.route
 }
 
-func NewNavigator() *Navigator {
-	navigator := &Navigator{
-		registeredPatterns: make(map[string]RouteHandler),
-	}
-	navigator.list.Axis = layout.Vertical
-	return navigator
+func (n *Nav) setRoute(route route) {
+	n.route = route
 }
 
-func (n *Navigator) Register(pattern string, handler RouteHandler) bool {
-	_, ok := n.registeredPatterns[pattern]
+func NewNav() *Nav {
+	return &Nav{handlers: make(map[string]Router)}
+}
+
+func (n *Nav) Register(pattern string, handler Router) bool {
+	_, ok := n.handlers[pattern]
 	if ok {
 		return false
 	}
-	n.registeredPatterns[pattern] = handler
+	n.handlers[pattern] = handler
 	return true
 }
 
-func (n *Navigator) ActivePattern() string {
-	return n.activePattern
-}
-
-func (n *Navigator) SetActivePattern(activePattern string) {
-	n.activePattern = activePattern
-}
-
-func (n *Navigator) Layout(gtx layout.Context) layout.Dimensions {
-	if n.activeView.view == nil {
-		return n.fallbackLayout(gtx)
-	}
-	return n.activeView.view.Layout(gtx)
-}
-
-// NavigateTo Refer to RouteHandler
-func (n *Navigator) NavigateTo(pth string) bool {
-	if pth == n.ActiveView().ConcretePath {
+func (n *Nav) NavigateTo(path string) bool {
+	uRL, err := url.ParseRequestURI(path)
+	if err != nil {
 		return false
 	}
-	if !strings.HasPrefix(pth, "/") {
-		hndlr, ok := n.registeredPatterns[n.ActivePattern()]
+	for k, h := range n.handlers {
+		ok := regexp.MustCompile(k).MatchString(path)
 		if ok {
-			vw := hndlr.Handle(pth)
-			if vw != nil {
-				n.setActiveView(PathView{
-					view:         vw,
-					ConcretePath: n.ActiveView().ConcretePath + "/" + pth,
+			v := h.Handle(uRL)
+			if v != nil {
+				n.setRoute(route{
+					URL:           uRL,
+					activePattern: n.getRoute().activePattern,
+					View:          v,
+					path:          path,
 				})
-			}
-			return true
-		}
-		pth = n.ActiveView().ConcretePath + "/" + pth
-	}
-	for ptn, hndlr := range n.registeredPatterns {
-		if regexp.MustCompile(ptn).MatchString(pth) {
-			vw := hndlr.Handle(pth)
-			if vw != nil {
-				n.setActiveView(PathView{
-					view:         vw,
-					ConcretePath: pth,
-				})
+				return true
 			}
 		}
 	}
 	return false
 }
 
-func (n *Navigator) fallbackLayout(gtx layout.Context) layout.Dimensions {
-	gtx.Constraints.Min = gtx.Constraints.Max
-	return n.list.Layout(gtx, 1, func(gtx layout.Context, index int) layout.Dimensions {
-		return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-			return material.Body1(material.NewTheme(), "This indicates error").Layout(gtx)
-		})
-	})
+func (n *Nav) Layout(gtx layout.Context) layout.Dimensions {
+	if n.route.View != nil {
+		return n.route.View.Layout(gtx)
+	}
+	return material.Body1(material.NewTheme(), "View Not Found").Layout(gtx)
 }

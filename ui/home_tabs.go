@@ -1,46 +1,128 @@
 package ui
 
 import (
-	"fmt"
 	"gioui.org/layout"
 	"gioui.org/widget"
 	"gioui.org/widget/material"
-	"github.com/partisiadev/partisiawallet/log"
 	"github.com/partisiadev/partisiawallet/ui/fwk"
 	"github.com/partisiadev/partisiawallet/ui/page/about"
 	"github.com/partisiadev/partisiawallet/ui/page/chains"
+	"github.com/partisiadev/partisiawallet/ui/page/newacc"
 	"github.com/partisiadev/partisiawallet/ui/page/wallet"
 	"github.com/partisiadev/partisiawallet/ui/theme"
 	"github.com/partisiadev/partisiawallet/ui/view"
 	"golang.org/x/exp/shiny/materialdesign/icons"
+	"net/url"
+	"strings"
 )
 
-type homeTabsLayout struct {
+type AppLayout struct {
 	view.Slider
 	fwk.Manager
 	tabItems    [3]*tabItem
+	view        view.View
 	activeIndex int
 }
 
+func NewAppLayout(m *manager) *AppLayout {
+	appLayout := &AppLayout{Manager: m}
+	walletIcon, _ := widget.NewIcon(icons.ActionAccountBalanceWallet)
+	chainsIcon, _ := widget.NewIcon(icons.ContentLink)
+	aboutIcon, _ := widget.NewIcon(icons.ActionInfo)
+	tabItems := [3]*tabItem{
+		{title: "Wallet", icon: walletIcon, parent: appLayout, index: 0, path: `/homeTabs/wallet`, view: wallet.New(m)},
+		{title: "Chains", icon: chainsIcon, parent: appLayout, index: 1, path: `/homeTabs/chains`, view: chains.New(m)},
+		{title: "About", icon: aboutIcon, parent: appLayout, index: 2, path: `/homeTabs/about`, view: about.New(m)},
+	}
+	appLayout.tabItems = tabItems
+	appLayout.Nav().Register(`^/wallet`, appLayout)
+	appLayout.Nav().Register(`^/chains`, appLayout)
+	appLayout.Nav().Register(`^/about`, appLayout)
+	appLayout.Nav().Register(`^/createAccount`, appLayout)
+	appLayout.Nav().Register(`^/homeTabs/wallet`, appLayout)
+	appLayout.Nav().Register(`^/homeTabs/chains`, appLayout)
+	appLayout.Nav().Register(`^/homeTabs/about`, appLayout)
+	appLayout.Nav().Register(`^/homeTabs/createAccount`, appLayout)
+	return appLayout
+}
+
+func (hm *AppLayout) Handle(path *url.URL) fwk.View {
+	var v fwk.View
+	if path == nil {
+		return v
+	}
+	pth := path.Path
+	switch {
+	case strings.HasPrefix(pth, `/homeTabs/wallet`):
+		hm.activeIndex = 0
+		hm.view = hm.tabItems[0].view
+		hm.tabItems[0].path = path.Path
+		return hm
+	case strings.HasPrefix(pth, `/homeTabs/chains`):
+		hm.activeIndex = 1
+		hm.view = hm.tabItems[1].view
+		hm.tabItems[1].path = path.Path
+		return hm
+	case strings.HasPrefix(pth, `/homeTabs/about`):
+		hm.activeIndex = 2
+		hm.view = hm.tabItems[2].view
+		hm.tabItems[2].path = path.Path
+		return hm
+	case strings.HasPrefix(pth, `/homeTabs/createAccount`):
+		hm.view = newacc.New(hm)
+		return hm
+	}
+	return v
+}
+
+func (hm *AppLayout) Layout(gtx layout.Context) layout.Dimensions {
+	return layout.Flex{Axis: layout.Vertical}.Layout(gtx,
+		layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
+			gtx.Constraints.Min = gtx.Constraints.Max
+			if hm.view == nil {
+				return layout.Dimensions{}
+			}
+			return hm.Slider.Layout(gtx, hm.view.Layout)
+		}),
+		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+			gtx.Constraints.Min.X = gtx.Constraints.Max.X
+			inset := layout.Inset{Top: 0, Bottom: 0}
+			return inset.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+				gtx.Constraints.Min.X = gtx.Constraints.Max.X
+				return layout.Flex{Spacing: layout.SpaceEvenly, Alignment: layout.Middle}.Layout(gtx,
+					layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
+						return hm.tabItems[0].Layout(gtx)
+					}),
+					layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
+						return hm.tabItems[1].Layout(gtx)
+					}), layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
+						return hm.tabItems[2].Layout(gtx)
+					}),
+				)
+			})
+		}),
+	)
+}
+
 type tabItem struct {
-	URL string
 	widget.Clickable
-	fwk.View
 	title  string
-	parent *homeTabsLayout
 	icon   *widget.Icon
 	index  int
+	parent *AppLayout
+	view   view.View
+	path   string
 }
 
 func (t *tabItem) Layout(gtx layout.Context) layout.Dimensions {
 	if t.Clickable.Clicked(gtx) {
 		if t.index < t.parent.activeIndex {
 			t.parent.Slider.PushRight()
+			t.parent.Nav().NavigateTo(t.path)
 		} else if t.index > t.parent.activeIndex {
 			t.parent.Slider.PushLeft()
+			t.parent.Nav().NavigateTo(t.path)
 		}
-		t.parent.activeIndex = t.index
-		t.parent.Navigator().NavigateTo(t.URL)
 	}
 
 	btnStyle := material.ButtonLayoutStyle{Button: &t.Clickable}
@@ -67,53 +149,4 @@ func (t *tabItem) Layout(gtx layout.Context) layout.Dimensions {
 			)
 		})
 	})
-}
-
-func newHomeTabsManager(m *manager) *homeTabsLayout {
-	walletIcon, _ := widget.NewIcon(icons.ActionAccountBalanceWallet)
-	chainsIcon, _ := widget.NewIcon(icons.ContentLink)
-	aboutIcon, _ := widget.NewIcon(icons.ActionInfo)
-	tabItems := [3]*tabItem{
-		{URL: "/" + fwk.HomeTabsPageName + "/" + fwk.WalletPageName, title: "Wallet", View: wallet.New(m), icon: walletIcon, index: 0},
-		{URL: "/" + fwk.HomeTabsPageName + "/" + fwk.ChainsPageName, title: "Chains", View: chains.New(m), icon: chainsIcon, index: 1},
-		{URL: "/" + fwk.HomeTabsPageName + "/" + fwk.AboutPageName, title: "About", View: about.New(m), icon: aboutIcon, index: 2},
-	}
-	hmTabs := &homeTabsLayout{Manager: m, tabItems: tabItems}
-	hmTabs.tabItems[0].parent = hmTabs
-	hmTabs.tabItems[1].parent = hmTabs
-	hmTabs.tabItems[2].parent = hmTabs
-	hmTabs.Navigator().Register(fmt.Sprintf(`^/%s`, fwk.HomeTabsPageName), hmTabs)
-	hmTabs.Navigator().NavigateTo(tabItems[0].URL)
-	return hmTabs
-}
-
-func (hm *homeTabsLayout) Layout(gtx layout.Context) layout.Dimensions {
-	return layout.Flex{Axis: layout.Vertical}.Layout(gtx,
-		layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
-			gtx.Constraints.Min = gtx.Constraints.Max
-			return hm.Slider.Layout(gtx, hm.tabItems[hm.activeIndex].View.Layout)
-		}),
-		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-			gtx.Constraints.Min.X = gtx.Constraints.Max.X
-			inset := layout.Inset{Top: 0, Bottom: 0}
-			return inset.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-				gtx.Constraints.Min.X = gtx.Constraints.Max.X
-				return layout.Flex{Spacing: layout.SpaceEvenly, Alignment: layout.Middle}.Layout(gtx,
-					layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
-						return hm.tabItems[0].Layout(gtx)
-					}),
-					layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
-						return hm.tabItems[1].Layout(gtx)
-					}), layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
-						return hm.tabItems[2].Layout(gtx)
-					}),
-				)
-			})
-		}),
-	)
-}
-
-func (hm *homeTabsLayout) Handle(concretePath string) fwk.View {
-	log.Logger().Println(concretePath)
-	return hm
 }
